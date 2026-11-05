@@ -1,18 +1,24 @@
-# G1 — Shared preprocessing release `g1-v1.1` (RAG captioning, MS COCO)
+# G1 — Shared preprocessing release `g1-v1.2` (test = 1000 images) (RAG captioning, MS COCO)
 
 A reproducible pipeline that produces the **frozen release** (splits,
 normalized images, captions, metadata, embeddings, FAISS indexes, EDA, QC) that
 all groups can load with a single class (`rag_data.Release`).
 
-## Release g1-v1.1
+## Release g1-v1.2 — what changed vs v1.1 (tag `v1.1`)
 
-The frozen release uses **SigLIP (`siglip-b16`) as its primary encoder**, with
-CLIP ViT-B/32 and DINOv2-small also available. It contains 10,000 KB images,
-100 validation images, and 100 test images. The 100-image test size is
-documented in [`reports/split_confirmation.json`](reports/split_confirmation.json).
-Other-group schema, loading, index, and limitation details are in
-[`docs/DATASET_CARD.md`](docs/DATASET_CARD.md); preprocessing details are in
-[`docs/preprocessing.md`](docs/preprocessing.md).
+| | v1.1 | v1.2 |
+|---|---|---|
+| test images (val2017) | 100 | **1000** (spec 4.4.2/4.4.3; enables the 200-image hallucination sample of 10.4 and powers the 10.7 tests) |
+| KB / validation | 10,000 / 100 | unchanged by design (independent seeds) |
+| retrieval relevance | >= 1 shared class (saturates at ~1.0) | adds **strict** metrics: Jaccard(classes) >= `evaluation.relevance_min_jaccard` (0.5) |
+| TTR in EDA | raw (not comparable across corpus sizes) | + TTR on equal token budget |
+| `04_embeddings_index` run cell | hard-coded siglip-only | all encoders + SBERT (siglip-only stays in `tools/run_siglip_only.py`) |
+| `05_eda` last cell | crashed on a fresh run | guarded |
+| tuning grids (spec 9) | top_k only | + similarity_threshold, temperature in `config.yaml` |
+
+Professor validation of the 1000-image test size: see [`reports/split_decision.json`](reports/split_decision.json) (status PENDING).
+The primary encoder stays `siglip-b16` **only if** `06_select_config` (validation split, unchanged) confirms it when rerun.
+`artifacts/` is intentionally absent from this commit: it must be regenerated (see below); v1.1 artifacts remain in git history (`git checkout v1.1`).
 
 ## Reproduce the pipeline
 
@@ -32,8 +38,9 @@ realistic query metadata. `06_select_config` selects using validation data;
 the test split is report-only and must not be used for selection.
 
 The complete pipeline can also be run with `python tools/run_notebooks.py`.
-For the already frozen `g1-v1.1` release, do not rerun artifact-producing
-notebooks in place.
+Rebuild v1.2 in a fresh working copy; **never** rerun artifact-writing notebooks in place on a frozen release.
+Note: with 1000 test images, `02b_dedup_repair` may drop more KB near-duplicates than in v1.1; repeat `01b`→`02`→`02b` until "nothing to repair".
+Note: `embed_images_seconds` in `index_report.json` is ~0 when embeddings come from cache; for the spec's *indexing time*, run `04` once on an empty `embeddings/` folder and keep that report.
 
 Test without network access or a GPU (synthetic mini-COCO + fake encoder):
 ```bash
@@ -109,7 +116,7 @@ new release in a separate working copy when changing data or embeddings.
    reruns produce byte-identical files (except computation times in
    `index_report.json`); versions are logged.
 6. **Documented preprocessing selection** (`audit/preproc_config_selection.json`)
-   with statistical tests—the report notes that with 100 images, differences
+   with statistical tests—the report notes that with 100 validation images, differences
    between encoders may not be statistically significant.
 7. **Complete audit**: `audit/image_audit.json` (corrupt images, EXIF
    corrections, grayscale→RGB conversion, exact duplicates, val/test↔KB
@@ -145,9 +152,7 @@ the specification: `index/index_report.json`.
 
 ## Split decisions
 
-- **Test size: 100 images** (§4.1 and §4.2 of the specification, val2017).
-  Sections §4.4.2-4.4.3 mention 1 000; 100 was confirmed by the professor and
-  documented in `reports/split_confirmation.json`.
+- **Test size: 1000 images** (val2017, spec 4.4.2/4.4.3). Spec 4.1/4.2 say 100: see `reports/split_decision.json`.
 - **Validation: 100 images sampled from train2017** (§4.1), counted separately
   in the §4.4.2 summary → they are taken from train2017, disjoint from the KB.
 - **Images with 6-7 captions**: keep the first 5 by `caption_id`.

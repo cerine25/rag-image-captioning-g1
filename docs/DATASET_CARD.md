@@ -3,7 +3,7 @@
 ## Release identity
 
 The frozen manifest identifies release `g1-v1.1`, primary encoder `siglip-b16`,
-seed `42`, and split sizes of 10,000 KB, 100 validation, and 100 test images
+seed `42`, and split sizes of 10,000 KB, 100 validation, and 1000 test images
 ([`artifacts/manifest.json`](../artifacts/manifest.json)). The split metadata
 records the same counts and ID hashes ([`artifacts/splits/splits_meta.json`](../artifacts/splits/splits_meta.json)).
 The separate confirmation record is
@@ -109,19 +109,19 @@ from the frozen `.npy` files and checked against the normalization stated in
 |---|---|---:|---|---|
 | CLIP ViT-B/32 | `artifacts/embeddings/clip-b32/kb_img.npy` | `(10000, 512)` | float32 | L2 |
 | CLIP ViT-B/32 | `artifacts/embeddings/clip-b32/val_img.npy` | `(100, 512)` | float32 | L2 |
-| CLIP ViT-B/32 | `artifacts/embeddings/clip-b32/test_img.npy` | `(100, 512)` | float32 | L2 |
+| CLIP ViT-B/32 | `artifacts/embeddings/clip-b32/test_img.npy` | `(1000, 512)` | float32 | L2 |
 | CLIP ViT-B/32 | `artifacts/embeddings/clip-b32/kb_txt.npy` | `(50000, 512)` | float32 | L2 |
 | DINOv2-small | `artifacts/embeddings/dinov2-s/kb_img.npy` | `(10000, 384)` | float32 | L2 |
 | DINOv2-small | `artifacts/embeddings/dinov2-s/val_img.npy` | `(100, 384)` | float32 | L2 |
-| DINOv2-small | `artifacts/embeddings/dinov2-s/test_img.npy` | `(100, 384)` | float32 | L2 |
+| DINOv2-small | `artifacts/embeddings/dinov2-s/test_img.npy` | `(1000, 384)` | float32 | L2 |
 | SigLIP base patch16/224 | `artifacts/embeddings/siglip-b16/kb_img.npy` | `(10000, 768)` | float32 | L2 |
 | SigLIP base patch16/224 | `artifacts/embeddings/siglip-b16/val_img.npy` | `(100, 768)` | float32 | L2 |
-| SigLIP base patch16/224 | `artifacts/embeddings/siglip-b16/test_img.npy` | `(100, 768)` | float32 | L2 |
+| SigLIP base patch16/224 | `artifacts/embeddings/siglip-b16/test_img.npy` | `(1000, 768)` | float32 | L2 |
 | SigLIP base patch16/224 | `artifacts/embeddings/siglip-b16/kb_txt.npy` | `(50000, 768)` | float32 | L2 |
 | SBERT all-MiniLM-L6-v2 | `artifacts/embeddings/sbert_kb_txt.npy` | `(50000, 384)` | float32 | L2 |
 
 Each image encoder directory also has `ids_kb.npy`, `ids_val.npy`, and
-`ids_test.npy` (`int64`, respectively 10,000, 100, and 100 IDs). CLIP and
+`ids_test.npy` (`int64`, respectively 10,000, 100, and 1,000 IDs). CLIP and
 SigLIP text arrays also have `kb_txt_caption_ids.npy` and
 `kb_txt_image_ids.npy`; these each have 50,000 aligned `int64` rows.
 

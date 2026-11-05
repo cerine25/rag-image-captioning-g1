@@ -16,7 +16,7 @@ cells 5, 7, and 13:
    labels complexity from the number of non-crowd object annotations:
    simple = 1–2, medium = 3–5, complex = 6–9, crowded = 10 or more.
 2. Before filling complexity quotas, `greedy_cover` selects up to
-   `int(0.5 * n)` images (50 for each 100-image split) to cover classes, with
+   `int(0.5 * n)` images (50 for a 100-image split, 500 for the 1000-image test split) to cover classes, with
    `min_per_cat=1`. At each step it targets the rarest still-needed class and
    chooses an available image that covers the most other still-needed classes;
    the seeded RNG breaks ties.
@@ -27,7 +27,7 @@ cells 5, 7, and 13:
    complexity quota is rebalanced, and any remaining shortfall is assigned to
    medium.
 4. The minimum interaction target is
-   `ceil(eval_min_interaction_frac * n)` = 30 for a 100-image sample. An image
+   `ceil(eval_min_interaction_frac * n)` = 30 for 100 images, 300 for 1000. An image
    counts as an interaction when it has a person and at least one other class,
    at least two person annotations, or object supercategories that include
    animal plus at least one other supercategory. While filling each complexity
@@ -49,6 +49,6 @@ thresholds and interaction rule match the notebook helpers.
 | Split | Images | Simple | Medium | Complex | Crowded | Indoor | Outdoor | Mixed | Interactions | Classes covered | Minimum images/class |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Validation | 100 | 25 | 30 | 30 | 15 | 35 | 35 | 30 | 69 (69%) | 80 | 1 |
-| Test | 100 | 25 | 30 | 30 | 15 | 37 | 33 | 30 | 61 (61%) | 80 | 1 |
+| Test | 1000 | *(to be filled after rebuild: `reports/tables/test_strata.csv`)* |
 
 The corresponding machine-readable table is [test_strata.csv](./tables/test_strata.csv).

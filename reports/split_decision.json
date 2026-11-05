@@ -1,0 +1,14 @@
+{
+  "release_version": "g1-v1.2",
+  "knowledge_base_size": 10000,
+  "validation_size": 100,
+  "test_size": 1000,
+  "rationale": [
+    "Spec 4.4.2 and 4.4.3 specify 1,000 test images.",
+    "Spec 10.4 requires a hallucination analysis on 200 images: impossible with a 100-image test split without reusing validation images.",
+    "Spec 10.7 requires Bonferroni-corrected paired tests across many comparisons: 100 images give low power."
+  ],
+  "spec_inconsistency": "Spec 4.1/4.2 say 100 test images; 4.4.2/4.4.3 say 1,000.",
+  "professor_validation": "PENDING - to be confirmed in writing before the release is shared (replaces the v1.1 confirmation for 100 images)",
+  "kb_and_val_unchanged_by_design": "kb and val are sampled with independent seeds (seed+3, seed+2) from train2017; only the test sample (seed+1, val2017) changes."
+}
