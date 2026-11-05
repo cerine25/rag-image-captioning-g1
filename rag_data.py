@@ -2,7 +2,7 @@
 
     from rag_data import Release
     R = Release("artifacts")
-    Q = R.image_embeddings("test")                    # (100, d) float32 normalisé, lignes alignées sur R.ids("test")
+    Q = R.image_embeddings("test")                    # (1000, d) float32 normalisé, lignes alignées sur R.ids("test")
     scores, kb_img_ids = R.search_images(Q, k=5, query_ids=R.ids("test"))   # garde-fou anti-fuite intégré
     caps = R.kb_captions_of(kb_img_ids[0, 0])         # captions (brutes) de l'image retrouvée
     refs = R.eval_refs("test")                        # {image_id: [5 captions]} -> UNIQUEMENT pour l'évaluation

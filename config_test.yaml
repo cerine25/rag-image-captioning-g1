@@ -2,7 +2,7 @@
 seed: 42
 release_version: "g1-TEST"
 paths: {raw: data_fake/raw, artifacts: artifacts_test}
-sizes: {kb: 800, val: 60, test: 60}
+sizes: {kb: 800, val: 60, test: 300}   # test >> val comme en v1.2 (1000 vs 100)
 captions_per_image: 5
 sampling:
   min_objects: 1

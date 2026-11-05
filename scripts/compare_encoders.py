@@ -24,9 +24,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pycocoevalcap.cider.cider import Cider
 
-from common import clean_caption
+from common import clean_caption, load_config
 
+CFG = load_config()
 ARTIFACTS = ROOT / "artifacts"
+MIN_JACCARD = float(CFG.get("evaluation", {}).get("relevance_min_jaccard", 0.5))
 CONFIGS = [
     ("clip-b32", "img2img"),
     ("clip-b32", "img2txt"),
@@ -57,6 +59,13 @@ CSV_FIELDS = [
     "precision@5",
     "precision@10",
     "mrr",
+    "strict_recall@1",
+    "strict_recall@5",
+    "strict_recall@10",
+    "strict_precision@1",
+    "strict_precision@5",
+    "strict_precision@10",
+    "strict_mrr",
     "cider",
     "random_caption_cider_seed42",
     "latency_ms_per_query_median_5_repeats",
@@ -209,35 +218,44 @@ def retrieve(
     raise ValueError(f"Unsupported retrieval mode: {mode}")
 
 
+def _jaccard(a: set, b: set) -> float:
+    return len(a & b) / len(a | b) if (a or b) else 0.0
+
+
 def relevance_metrics(
     query_ids: np.ndarray,
     retrieved_classes: list[list[set[str]]],
     metadata: dict[int, dict],
 ) -> tuple[int, dict[str, float]]:
+    """Two relevance definitions.
+
+    * lenient (keys recall@k ...): >= 1 shared object class. Saturates near 1.0 (the class
+      `person` is in most COCO images), so it cannot discriminate encoders.
+    * strict (keys strict_recall@k ...): Jaccard(query classes, retrieved classes) >= MIN_JACCARD.
+    """
     eligible = [
         row_idx
         for row_idx, image_id in enumerate(query_ids)
         if classes_for(metadata, int(image_id))
     ]
     result = {}
-    for k in (1, 5, 10):
-        hits = []
-        precisions = []
-        reciprocal_ranks = []
-        for row_idx in eligible:
-            query_classes = classes_for(metadata, int(query_ids[row_idx]))
-            relevant = [
-                bool(query_classes & retrieved_classes[row_idx][rank])
-                for rank in range(k)
-            ]
-            hits.append(any(relevant))
-            precisions.append(sum(relevant) / k)
-            first = next((rank + 1 for rank, is_relevant in enumerate(relevant) if is_relevant), None)
-            reciprocal_ranks.append(0.0 if first is None else 1.0 / first)
-        result[f"recall@{k}"] = float(np.mean(hits)) if eligible else 0.0
-        result[f"precision@{k}"] = float(np.mean(precisions)) if eligible else 0.0
-        if k == 10:
-            result["mrr"] = float(np.mean(reciprocal_ranks)) if eligible else 0.0
+    for prefix, is_rel in (
+        ("", lambda q, r: bool(q & r)),
+        ("strict_", lambda q, r: _jaccard(q, r) >= MIN_JACCARD),
+    ):
+        for k in (1, 5, 10):
+            hits, precisions, reciprocal_ranks = [], [], []
+            for row_idx in eligible:
+                query_classes = classes_for(metadata, int(query_ids[row_idx]))
+                relevant = [is_rel(query_classes, retrieved_classes[row_idx][rank]) for rank in range(k)]
+                hits.append(any(relevant))
+                precisions.append(sum(relevant) / k)
+                first = next((rank + 1 for rank, ok in enumerate(relevant) if ok), None)
+                reciprocal_ranks.append(0.0 if first is None else 1.0 / first)
+            result[f"{prefix}recall@{k}"] = float(np.mean(hits)) if eligible else 0.0
+            result[f"{prefix}precision@{k}"] = float(np.mean(precisions)) if eligible else 0.0
+            if k == 10:
+                result[f"{prefix}mrr"] = float(np.mean(reciprocal_ranks)) if eligible else 0.0
     return len(query_ids) - len(eligible), result
 
 
@@ -247,8 +265,9 @@ def evaluate_split(split: str, metadata: dict[int, dict], kb_captions: list[dict
     references: dict[int, list[str]] = defaultdict(list)
     for row in references_rows:
         references[int(row["image_id"])].append(row["caption_raw"])
-    if len(references) != 100:
-        raise ValueError(f"Expected 100 {split} query images, found {len(references)}")
+    expected = int(CFG["sizes"][split])
+    if len(references) != expected:
+        raise ValueError(f"Expected {expected} {split} query images (config.yaml), found {len(references)}")
 
     # One reproducible random KB caption per query is shared across configurations.
     rng = np.random.RandomState(42)
@@ -330,7 +349,7 @@ def write_figure(rows: list[dict], path: Path) -> None:
     cider_bars = ax.bar(x - width / 2, [by_config[c]["cider"] for c in ordered], width, label="CIDEr")
     mrr_bars = ax.bar(x + width / 2, [by_config[c]["mrr"] for c in ordered], width, label="MRR")
     ax.set_ylabel("Score")
-    ax.set_title("Encoder comparison — 100 validation images")
+    ax.set_title(f"Encoder comparison — {CFG['sizes']['val']} validation images")
     ax.set_xticks(x, labels)
     ax.set_ylim(0, 1)
     ax.legend()
@@ -364,8 +383,8 @@ def main() -> None:
     write_figure(val_rows, ROOT / "reports" / "figures" / "encoder_comparison_val.png")
 
     print(
-        "Relevance: a retrieved KB image is relevant when it shares at least one "
-        "object class with the query image in metadata.jsonl; for img2txt, the "
+        f"Relevance: lenient = shares >= 1 object class; strict = Jaccard of class sets >= {MIN_JACCARD} "
+        "(metadata.jsonl); for img2txt, the "
         "retrieved caption's parent image is used. Queries with no metadata "
         "objects are excluded from relevance metrics only."
     )

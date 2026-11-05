@@ -1,6 +1,6 @@
 # Configuration unique du pipeline G1 (tout est piloté d'ici, rien en dur dans les scripts)
 seed: 42
-release_version: "g1-v1.1"
+release_version: "g1-v1.2"
 
 paths:
   raw: data/raw                 # annotations + images COCO brutes
@@ -9,7 +9,7 @@ paths:
 sizes:                          # tailles des splits (cf. énoncé §4.2)
   kb: 10000                     # COCO train2017, base de connaissances RAG
   val: 100                      # COCO train2017 (disjoint de la KB), tuning
-  test: 100                     # COCO val2017, évaluation finale  (100 images, conformément au sujet §4.1/4.2)
+  test: 1000                    # COCO val2017, évaluation finale : 1000 images (énoncé §4.4.2/4.4.3 ; permet l'échantillon de 200 images du §10.4 et la puissance des tests §10.7)
 
 captions_per_image: 5           # on garde les 5 premières (par caption_id) si l'image en a plus
 
@@ -44,5 +44,13 @@ index:
   type: flat_ip                 # exact, cosinus (vecteurs L2-normalisés + produit scalaire)
   hnsw: {M: 32, efConstruction: 200, efSearch: 64}   # indexé aussi pour documentation/latence
 
-tuning:
+evaluation:
+  relevance_min_jaccard: 0.5    # pertinence STRICTE d'une image récupérée : Jaccard(classes requête, classes récupérée) >= seuil
+                                # (la pertinence "au moins 1 classe commune" est conservée mais sature à ~1.0)
+  hallucination_sample: 200     # §10.4 : échantillon pris dans le split test (1000 images)
+
+tuning:                         # grilles du §9 (toutes pilotées d'ici)
   top_k: [1, 3, 5, 10]
+  similarity_threshold: [0.5, 0.7, 0.9]
+  temperature: [0.1, 0.5, 1.0]
+  chunk_size: not_applicable    # captions COCO courtes (~10 mots) : pas de découpage en chunks, à justifier dans le rapport
